@@ -11,6 +11,7 @@ HOME = os.environ["HOME"]
 LOG_DIR = os.path.join(HOME, ".mistral", "log")
 API_ENDPOINT_URL = "https://api.mistral.ai/v1/chat/completions"
 API_TOKEN = os.environ["MISTRAL_API_TOKEN"]
+MODEL = os.environ.get("MISTRAL_MODEL", "mistral-large-latest")
 
 def query(src_path):
     dt = datetime.now()
@@ -30,6 +31,10 @@ def query(src_path):
         os.makedirs(LOG_DIR, exist_ok = True)
         shutil.copyfile(src_path, in_path)
     try:
+        os.remove(out_link)
+    except FileNotFoundError:
+        pass
+    try:
         os.remove(in_link)
     except FileNotFoundError:
         pass
@@ -38,10 +43,9 @@ def query(src_path):
         req_content = in_file.read()
     print("{}".format(req_content))
     req_body = {
-        "model": "mistral-large-latest",
+        "model": MODEL,
         "messages": [{"role": "user", "content": req_content}],
         "temperature": 0.0,
-        "top_p": None,
         "max_tokens": None,
         "stream": False,
     }
@@ -63,10 +67,6 @@ def query(src_path):
     print("{}".format(res_content))
     with open(out_path, "w") as out_file:
         out_file.write(res_content)
-    try:
-        os.remove(out_link)
-    except FileNotFoundError:
-        pass
     os.symlink(out_name, out_link)
 
 def main():
