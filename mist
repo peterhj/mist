@@ -8,23 +8,31 @@ import sys
 import urllib.request
 
 HOME = os.environ["HOME"]
-LOG_DIR = os.path.join(HOME, ".mistral", "log")
+LOG_DIR = os.path.join(HOME, ".mist", "log")
 API_ENDPOINT_URL = "https://api.mistral.ai/v1/chat/completions"
-API_TOKEN = os.environ["MISTRAL_API_TOKEN"]
+API_TOKEN = os.environ.get("MISTRAL_API_TOKEN", None)
+if API_TOKEN is None:
+    with open(os.path.join(HOME, ".mist", "api_token.txt"), "r") as api_token_file:
+        API_TOKEN = api_token_file.read().strip()
+API_HTTP_HEADERS = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "Authorization": "Bearer {}".format(API_TOKEN),
+}
 MODEL = os.environ.get("MISTRAL_MODEL", "mistral-large-latest")
 
 def query(src_path):
     dt = datetime.now()
     d = "{}".format(dt.date())
     t = "{}".format(dt.time())
-    timestamp = "{}-{}".format(d, t[:8].replace(":", "-"))
-    stem = os.path.basename(src_path)
-    in_name = "{}.{}.in".format(stem, timestamp)
+    timestamp = "{}-{}".format(d, t[:8].replace(":", "_"))
+    src_name = os.path.basename(src_path)
+    in_name = "{}.{}.in".format(src_name, timestamp)
     in_path = os.path.join(LOG_DIR, in_name)
-    in_link = os.path.join(LOG_DIR, "{}.latest.in".format(stem))
-    out_name = "{}.{}.out".format(stem, timestamp)
+    in_link = os.path.join(LOG_DIR, "{}.latest.in".format(src_name))
+    out_name = "{}.{}.out".format(src_name, timestamp)
     out_path = os.path.join(LOG_DIR, out_name)
-    out_link = os.path.join(LOG_DIR, "{}.latest.out".format(stem))
+    out_link = os.path.join(LOG_DIR, "{}.latest.out".format(src_name))
     try:
         shutil.copyfile(src_path, in_path)
     except OSError:
@@ -50,14 +58,9 @@ def query(src_path):
         "stream": False,
     }
     req_data = json.dumps(req_body).encode("utf-8")
-    req_headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Authorization": "Bearer {}".format(API_TOKEN),
-    }
     req = urllib.request.Request(
         API_ENDPOINT_URL,
-        headers = req_headers,
+        headers = API_HTTP_HEADERS,
         data = req_data,
     )
     with urllib.request.urlopen(req) as res:
